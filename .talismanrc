@@ -1,4 +1,8 @@
 fileignoreconfig:
-- filename: .github/workflows/deploy.yml
-  checksum: 18c928acdd17fd1123fe9064c2225ea17d5d75f9198a77fa5e6bde125a48e314
+- filename: Infrastructure/bootstrap/.terraform.lock.hcl
+  checksum: b911895809f8912c17102404b523f9296f0e5632fdbb83e6afc3599774cac457
+- filename: Infrastructure/bootstrap/terraform.tfstate
+  checksum: 3cbca5f7b84aeba9d94ba7cbd7b4c4fc37b15fdf3750f060a7cbb839fcd06dab
+- filename: Infrastructure/eks-infra/backend.tf
+  checksum: 9b5894895b308ec039e508bb86827cf98d4cb2f6747ff35b5bda78d0d02e7bbb
 version: "1.0"

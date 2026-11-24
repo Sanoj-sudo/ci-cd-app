@@ -1,0 +1,129 @@
+
+name: Terraform EKS Infrastructure CI/CD
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "Infrastructure/**"
+      - ".github/workflows/terraform-eks.yml"
+
+  push:
+    branches:
+      - main
+    paths:
+      - "Infrastructure/**"
+      - ".github/workflows/terraform-eks.yml"
+
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+# Prevent simultaneous Terraform operations on the same state
+concurrency:
+  group: terraform-eks-infrastructure
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-south-1
+  TF_WORKING_DIR: Infrastructure/eks-infra
+  TF_IN_AUTOMATION: true
+
+jobs:
+
+  # =========================================
+  # PULL REQUEST VALIDATION
+  # =========================================
+
+  validate:
+    name: Terraform Format and Validate
+    runs-on: ubuntu-latest
+
+    if: github.event_name == 'pull_request'
+
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+
+      - name: Terraform Format
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Initialize
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -backend=false
+
+      - name: Terraform Validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate
+
+
+  # =========================================
+  # DEPLOY INFRASTRUCTURE
+  # =========================================
+
+  deploy:
+    name: Terraform Plan and Apply
+    runs-on: ubuntu-latest
+
+    if: >
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch'
+
+    # Configure required reviewers in GitHub
+    environment: production
+
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+
+      # AWS OIDC Authentication
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-region: us-east-2
+          role-to-assume: arn:aws:iam::636710162452:role/github_actions
+          role-session-name: gha-${{ github.run_id }}
+
+      - name: Verify AWS Identity
+        run: aws sts get-caller-identity
+
+      # Initialize S3 backend
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      # Check formatting
+      - name: Terraform Format
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform fmt -check -recursive
+
+      # Validate Terraform
+      - name: Terraform Validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate
+
+      # Generate execution plan
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -input=false -out=tfplan
+
+      # Apply infrastructure
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -input=false -auto-approve tfplan
