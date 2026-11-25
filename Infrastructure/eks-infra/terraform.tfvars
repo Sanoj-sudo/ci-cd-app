@@ -37,8 +37,8 @@ root_account_id = "636710162452"
 # =========================================
 
 iam_user_arns = [
-  "arn:aws:iam::123456789012:user/sanoj",
-  "arn:aws:iam::123456789012:user/adity"
+  "arn:aws:iam::636710162452:user/sanoj",
+  "arn:aws:iam::636710162452:user/adity"
 ]
 
 
