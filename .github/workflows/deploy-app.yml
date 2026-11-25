@@ -96,7 +96,7 @@ jobs:
           role-session-name: gha-${{ github.run_id }}
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --region us-east-2 --name eks-cluster-test
+        run: aws eks update-kubeconfig --region ap-south-1 --name dev-eks-cluster
 
       - name: Set image tag in manifest
         run: |
