@@ -1,4 +1,6 @@
+
 name: Deploy Java Application
+
 on:
   push:
     branches: [main]
@@ -7,26 +9,31 @@ permissions:
   contents: read
 
 jobs:
+
   compile:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+
       - uses: actions/setup-java@v6
         with:
           java-version: '17'
           distribution: temurin
           cache: maven
-      - run: mvn compile
+
+      - name: Compile Java Application
+        run: mvn compile
 
   security-scan:
     runs-on: ubuntu-latest
     needs: compile
+
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Trivy fs scan
+      - name: Trivy FS Scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
@@ -36,14 +43,15 @@ jobs:
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
 
-      - name: Upload Trivy report
+      - name: Upload Trivy Report
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: trivy-report
           path: trivy-report.txt
+          if-no-files-found: ignore
 
-      - name: Gitleaks scan
+      - name: Gitleaks Scan
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -51,58 +59,64 @@ jobs:
   test-cases:
     runs-on: ubuntu-latest
     needs: security-scan
+
     steps:
       - uses: actions/checkout@v7
+
       - uses: actions/setup-java@v6
         with:
           java-version: '17'
           distribution: temurin
           cache: maven
-      - run: mvn test
 
-build_docker_image_and_push:
-  runs-on: ubuntu-latest
-  needs: test-cases
+      - name: Run Test Cases
+        run: mvn test
 
-  steps:
-    - uses: actions/checkout@v7
+  build_docker_image_and_push:
+    runs-on: ubuntu-latest
+    needs: test-cases
 
-    - uses: docker/login-action@v4
-      with:
-        username: ${{ vars.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
 
-    - uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        tags: |
-          ${{ vars.DOCKER_USERNAME }}/java-app:${{ github.sha }}
-          ${{ vars.DOCKER_USERNAME }}/java-app:latest
+      - name: Docker Login
+        uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ vars.DOCKER_USERNAME }}/java-app:${{ github.sha }}
+            ${{ vars.DOCKER_USERNAME }}/java-app:latest
 
   deploy_to_kubernetes:
     runs-on: ubuntu-latest
     needs: build_docker_image_and_push
+
     permissions:
-      id-token: write   # required for OIDC
+      id-token: write
       contents: read
+
     steps:
       - uses: actions/checkout@v7
 
-      - uses: azure/setup-kubectl@v3
-        with:
-          version: 'v1.31.0'   # match your cluster version
-
-      - name: Configure AWS credentials (OIDC)
+      - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
-          aws-region: us-east-2
+          aws-region: ap-south-1
           role-to-assume: arn:aws:iam::636710162452:role/github_actions
           role-session-name: gha-${{ github.run_id }}
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --region ap-south-1 --name dev-eks-cluster
-
+        run: |
+          aws eks update-kubeconfig \
+            --region ap-south-1 \
+            --name dev-eks-cluster
 
       - name: Deploy Kubernetes Manifest
         run: |
@@ -111,7 +125,7 @@ build_docker_image_and_push:
       - name: Update BankApp Image
         run: |
           kubectl set image deployment/bankapp \
-            bankapp=${{ vars.DOCKER_USERNAME }}/java-app:${GITHUB_SHA}
+            bankapp=${{ vars.DOCKER_USERNAME }}/java-app:${{ github.sha }}
 
       - name: Verify Deployment
         run: |
