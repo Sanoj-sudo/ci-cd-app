@@ -28,7 +28,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  AWS_REGION: ap-south-1
+  AWS_REGION: us-east-2
   TF_WORKING_DIR: Infrastructure/eks-infra
   TF_IN_AUTOMATION: true
 
@@ -96,7 +96,7 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
-          aws-region: us-east-2
+          aws-region: ${{ env.AWS_REGION }}
           role-to-assume: arn:aws:iam::636710162452:role/github_actions
           role-session-name: gha-${{ github.run_id }}
 

@@ -105,5 +105,4 @@ jobs:
       - name: Deploy
         run: |
           kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
           kubectl rollout status deployment/<your-deployment-name> --timeout=120s
