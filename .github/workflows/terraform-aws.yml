@@ -6,14 +6,14 @@ on:
       - main
     paths:
       - "Infrastructure/**"
-      - ".github/workflows/terraform-eks.yml"
+      - ".github/workflows/terraform-aws.yml"
 
   push:
     branches:
       - main
     paths:
       - "Infrastructure/**"
-      - ".github/workflows/terraform-eks.yml"
+      - ".github/workflows/terraform-aws.yml"
 
   workflow_dispatch:
     inputs:
